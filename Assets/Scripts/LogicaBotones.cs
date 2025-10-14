@@ -1,0 +1,42 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+
+public class LogicaBotones : MonoBehaviour
+{
+    // Start is called before the first frame update
+    void Start()
+    {
+        
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        
+    }
+    public void Fracciomnes(){ 
+        SceneManager.LoadScene("Fracciones");
+
+    }
+
+    public void Sumas(){
+        SceneManager.LoadScene("Sumas");
+
+
+    }
+
+    public void Restas(){
+        SceneManager.LoadScene("Restas");
+
+
+    }
+
+    public void Menu(){
+        SceneManager.LoadScene("Menu");
+
+
+    }
+}
