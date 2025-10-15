@@ -17,4 +17,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Escenas/Sumas.unity
     guid: aa9dd405434134544b3a38cf365f5937
+  - enabled: 1
+    path: Assets/Escenas/Menu.unity
+    guid: b87e1702b86e9d143873f0bd39fb98ed
+  - enabled: 1
+    path: Assets/Escenas/PantallaCarga.unity
+    guid: e535db870478d1e4db7c6d6246dcfc8b
   m_configObjects: {}
