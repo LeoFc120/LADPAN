@@ -39,5 +39,16 @@ public class LogicaBotones : MonoBehaviour
 
 
     }
-   
+    public void Multiplicaciones(){
+        SceneManager.LoadScene("Multiplicaciones");
+
+
+    }
+
+    public void acercaden(){
+        SceneManager.LoadScene("acercaden");
+
+
+    }
+
 }

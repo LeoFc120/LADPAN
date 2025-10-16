@@ -23,4 +23,10 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Escenas/PantallaCarga.unity
     guid: e535db870478d1e4db7c6d6246dcfc8b
+  - enabled: 1
+    path: Assets/Escenas/Multiplicaciones.unity
+    guid: abbc362f0487aab4cb8f1feac61c49a2
+  - enabled: 1
+    path: Assets/Escenas/Acercaden.unity
+    guid: 20a3c1e80b5f27e438236b9353e98e1e
   m_configObjects: {}
