@@ -29,4 +29,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Escenas/Acercaden.unity
     guid: 20a3c1e80b5f27e438236b9353e98e1e
+  - enabled: 1
+    path: Assets/Escenas/SumandoConEstrellas.unity
+    guid: d0a32776d5ecdd546b66a0327ace983d
   m_configObjects: {}
