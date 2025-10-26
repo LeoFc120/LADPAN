@@ -4,43 +4,73 @@ using UnityEngine;
 
 public class Movimientojugador : MonoBehaviour
 {
-    public Transform[] carriles; // Arrastra Carril_1, Carril_2, Carril_3
-    private int carrilActual = 1; // Empieza en el carril central
-    public float velocidadCambio = 8f;
+    [Header("Carriles")]
+    public Transform[] carriles; // Carril1, Carril2, Carril3
 
+    [Header("Velocidades")]
+    public float velocidadCambio = 8f;
+    public float velocidadAvance = 10f;
+
+    private int carrilActual = 0; // Inicio en carril 1 (índice 0)
     private Vector3 posicionObjetivo;
 
     void Start()
     {
-        // Comenzamos en el carril del medio
+        if (carriles.Length == 0)
+        {
+            Debug.LogError("No se asignaron carriles en el array 'carriles'.");
+            enabled = false; // Desactiva el script si no hay carriles
+            return;
+        }
+
+        // Posición inicial en el carril 1
+        carrilActual = Mathf.Clamp(carrilActual, 0, carriles.Length - 1);
         posicionObjetivo = carriles[carrilActual].position;
-        transform.position = new Vector3(posicionObjetivo.x, transform.position.y, 0);
+        transform.position = new Vector3(posicionObjetivo.x, transform.position.y, transform.position.z);
     }
 
     void Update()
     {
-        // Movimiento táctil
+        if (carriles.Length == 0) return;
+
+        // Movimiento hacia adelante constante
+        transform.Translate(Vector3.forward * velocidadAvance * Time.deltaTime);
+
+        // Controles táctiles
         if (Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began)
         {
             Touch toque = Input.GetTouch(0);
-
-            if (toque.position.x < Screen.width / 2 && carrilActual > 0)
-                carrilActual--; // Mueve a la izquierda
-            else if (toque.position.x > Screen.width / 2 && carrilActual < carriles.Length - 1)
-                carrilActual++; // Mueve a la derecha
+            if (toque.position.x < Screen.width / 2)
+                MoverIzquierda();
+            else
+                MoverDerecha();
         }
 
-        // Movimiento con teclado (para pruebas en PC)
-        if (Input.GetKeyDown(KeyCode.LeftArrow) && carrilActual > 0)
-            carrilActual--;
-        if (Input.GetKeyDown(KeyCode.RightArrow) && carrilActual < carriles.Length - 1)
-            carrilActual++;
+        // Controles por teclado
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) MoverIzquierda();
+        if (Input.GetKeyDown(KeyCode.RightArrow)) MoverDerecha();
 
-        // Mueve el auto suavemente al nuevo carril
-        posicionObjetivo = carriles[carrilActual].position;
-        transform.position = Vector3.Lerp(transform.position,
-            new Vector3(posicionObjetivo.x, transform.position.y, 0),
-            Time.deltaTime * velocidadCambio);
+        // Movimiento suave hacia el carril destino
+        posicionObjetivo = carriles[Mathf.Clamp(carrilActual, 0, carriles.Length - 1)].position;
+        Vector3 nuevaPos = new Vector3(posicionObjetivo.x, transform.position.y, transform.position.z);
+        transform.position = Vector3.Lerp(transform.position, nuevaPos, Time.deltaTime * velocidadCambio);
     }
 
+    void MoverIzquierda()
+    {
+        if (carrilActual > 0)
+            carrilActual--;
+    }
+
+    void MoverDerecha()
+    {
+        if (carrilActual < carriles.Length - 1)
+            carrilActual++;
+    }
+
+    // Getter para que los CPU puedan conocer el carril del jugador
+    public int GetCarrilActual()
+    {
+        return carrilActual;
+    }
 }
