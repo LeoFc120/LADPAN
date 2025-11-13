@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -16,10 +16,10 @@ public class MovimientoCPU : MonoBehaviour
 
     void Start()
     {
-        // Buscar automáticamente al jugador
+        // Buscar automÃ¡ticamente al jugador
         jugador = FindObjectOfType<Movimientojugador>();
         if (jugador == null)
-            Debug.LogWarning("No se encontró ningún jugador en la escena.");
+            Debug.LogWarning("No se encontrÃ³ ningÃºn jugador en la escena.");
 
         carrilActual = ObtenerCarrilInicial();
         posicionObjetivo = carriles[carrilActual].position;
@@ -42,7 +42,7 @@ public class MovimientoCPU : MonoBehaviour
         Vector3 nuevaPos = new Vector3(posicionObjetivo.x, transform.position.y, transform.position.z);
         transform.position = Vector3.Lerp(transform.position, nuevaPos, Time.deltaTime * velocidadCambio);
 
-        // Revisar si el jugador cambió de carril
+        // Revisar si el jugador cambiÃ³ de carril
         if (jugador != null)
         {
             int carrilJugadorActual = jugador.GetCarrilActual();
@@ -56,7 +56,7 @@ public class MovimientoCPU : MonoBehaviour
 
     void CambiarCarrilSegunJugador()
     {
-        // Obtener carriles vacíos
+        // Obtener carriles vacÃ­os
         List<int> opciones = new List<int>();
         for (int i = 0; i < carriles.Length; i++)
         {
@@ -74,7 +74,7 @@ public class MovimientoCPU : MonoBehaviour
 
     bool CarrilOcupado(int indice)
     {
-        // Evita que otro CPU esté en ese carril
+        // Evita que otro CPU estÃ© en ese carril
         MovimientoCPU[] todosCPU = FindObjectsOfType<MovimientoCPU>();
         foreach (var cpu in todosCPU)
         {
