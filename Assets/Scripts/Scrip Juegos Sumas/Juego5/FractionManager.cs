@@ -1,132 +1,193 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using System.Collections;
+using System.Collections.Generic;
 
 public class FractionManager : MonoBehaviour
 {
     [Header("UI Textos")]
-    public Text partsText;
-    public Text linesText;
+    public Text instructionText; // "Corta en: 1/2"
     public Text levelText;
-    public Text winLoseText; // Texto de "¡Correcto!" o "¡Incorrecto!"
-    public GameObject gameOverText; // Texto de Game Over global
+    public Text winLoseText;
+    public GameObject gameOverText;
 
-    [Header("UI Plato")]
-    public Image plateImage; // La imagen del plato
-    public GameObject divideButton; // El botón de dividir
+    [Header("Zona de Dibujo")]
+    public RectTransform drawingArea; // Arrastra la IMAGEN del plato aquí
+    public GameObject linePrefab;     // Tu prefab de línea (¡Pivot X a 0!)
+    public Transform linesContainer;  // Arrastra la IMAGEN del plato aquí también
 
-    [Header("Sprites de División")]
-    // Aquí arrastrarás tus sprites de líneas si los tienes.
-    // Ej: spriteLinea1 para 1/2, spriteLineaCruzada para 1/4
-    public Sprite[] divisionSprites; // Guarda sprites para 1/2, 1/3, 1/4, etc.
+    [Header("Botones")]
+    public Button checkButton; // Botón "TRAZAR" / "COMPROBAR"
+    public Button cleanButton; // Botón "BORRAR"
 
     [Header("Base de Datos")]
     public LevelSaver databaseScript;
 
     // Variables de Juego
     private int currentLevel = 1;
-    private int targetParts; // Ejemplo: 2 para 1/2, 3 para 1/3
-    private int requiredLines; // Líneas necesarias para dividir (1 para 1/2, 2 para 1/3)
-    private int totalPartsAvailable; // Las partes disponibles en el plato (p.ej. 8 si es un círculo)
+    private int targetParts;
+    private List<GameObject> drawnLines = new List<GameObject>();
+
+    // Variables para el Dibujo
+    private GameObject currentLine;
+    private bool isDrawing = false;
+    private Vector2 startPoint;
 
     void Start()
     {
         if (winLoseText) winLoseText.gameObject.SetActive(false);
         if (gameOverText) gameOverText.SetActive(false);
 
-        // Conectar el botón al script
-        if (divideButton) divideButton.GetComponent<Button>().onClick.AddListener(CheckDivision);
+        // Conectar botones
+        if (checkButton) checkButton.onClick.AddListener(CheckAnswer);
+        if (cleanButton) cleanButton.onClick.AddListener(ClearLines);
 
         StartLevel();
     }
 
-    void StartLevel()
+    void Update()
     {
-        // Reiniciar UI
-        if (winLoseText) winLoseText.gameObject.SetActive(false);
-        if (levelText) levelText.text = "Level: " + currentLevel;
-
-        // DIFICULTAD
-        // Nivel 1: dividir en 2 o 3 (1 ó 2 líneas)
-        // Nivel 2: dividir en 2, 3 o 4 (1, 2 ó 3 líneas)
-        // Nivel 3: dividir en 2, 3, 4 o 5
-        int maxParts = 2 + currentLevel; // Empieza con 2+1=3, luego 2+2=4, etc.
-        maxParts = Mathf.Min(maxParts, 8); // No más de 8 divisiones por ahora (si no tienes sprites)
-
-        targetParts = Random.Range(2, maxParts + 1); // Queremos dividir en 2, 3, 4, etc.
-        requiredLines = targetParts - 1; // Para dividir en N partes, necesitas N-1 líneas
-
-        totalPartsAvailable = 8; // Podríamos asumir que el plato se puede dividir en 8 por ejemplo
-
-        UpdateUI();
-        // Mostrar el plato sin divisiones (o con la inicial si la tienes)
-        if (plateImage && divisionSprites.Length > 0) plateImage.sprite = null; // O el sprite del plato entero
-    }
-
-    void UpdateUI()
-    {
-        if (partsText) partsText.text = "Parts: 1/" + targetParts;
-        if (linesText) linesText.text = "Lines: " + requiredLines;
-        if (levelText) levelText.text = "Level: " + currentLevel;
-
-        // Mostrar la división correcta si tenemos el sprite
-        if (plateImage && divisionSprites != null && divisionSprites.Length > 0)
+        // Solo permitir dibujar si el botón de comprobar está activo
+        if (checkButton != null && checkButton.interactable)
         {
-            // Opcional: Mostrar el sprite de la división correcta al iniciar,
-            // o dejarlo vacío para que el jugador trace.
-            // Por ahora, lo dejamos vacío para que el jugador "decida".
+            HandleDrawingInput();
         }
     }
 
-    void CheckDivision()
+    // --- LÓGICA DE DIBUJO (Touch / Mouse) ---
+    void HandleDrawingInput()
     {
-        // En este juego, el jugador "traza" al hacer clic en el botón.
-        // La dificultad está en saber CUÁNTAS líneas son necesarias.
-
-        // Por ahora, simplemente si el jugador le da al botón, asume que "trazó"
-        // y lo comparamos con las líneas requeridas.
-
-        // Si el jugador tuviera que trazar manualmente, la lógica sería diferente.
-
-        // Asumiendo que el botón "DIVIDIR" crea UNA línea a la vez:
-        // Por simplicidad, el botón "DIVIDIR" simulará que el jugador ha hecho el número correcto de líneas.
-        // Si el juego fuera interactivo, el jugador contaría cuántas líneas traza.
-
-        // Por ahora, el jugador debe decidir si el número en 'LinesText' es el correcto.
-        // Simplificado: si el jugador pulsa el botón, siempre será "correcto" si las líneas mostradas eran las requeridas.
-        // Una mecánica más avanzada sería que el jugador TOCA N veces el plato para añadir N líneas.
-
-        // Para esta primera versión funcional:
-        // El jugador tiene que interpretar "Parts: 1/X" y saber que necesita "X-1" líneas.
-        // Al pulsar el botón, comprobamos si la "línea" que simulamos poner es la correcta.
-
-        // Vamos a hacer que el botón "DIVIDIR" sea el botón de "Comprobar".
-        // El jugador ve "Parts: 1/2" y "Lines: 1". Si le da a dividir, es correcto.
-        // Si ve "Parts: 1/4" y "Lines: 3" y le da a dividir, es correcto.
-
-        Debug.Log("Jugador intentó dividir. Partes objetivo: " + targetParts + ", Líneas requeridas: " + requiredLines);
-
-        // Para esta implementación:
-        // Si la instrucción es "Parts: 1/X" y el botón es "DIVIDIR",
-        // asumimos que el jugador está diciendo: "Divido en X partes".
-
-        bool isCorrect = true; // Por ahora, si le da al botón, es correcto
-                               // Luego podemos añadir más complejidad (ej. botones para 1, 2, 3 líneas)
-
-        if (isCorrect)
+        // 1. Clic inicial (Empezar corte)
+        if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log("¡División Correcta!");
-            StartCoroutine(ShowResultAndNextLevel(true));
+            // Solo dibujar si tocamos DENTRO del plato
+            if (RectTransformUtility.RectangleContainsScreenPoint(drawingArea, Input.mousePosition))
+            {
+                StartDrawing();
+            }
+        }
+
+        // 2. Arrastrar (Estirar corte)
+        if (Input.GetMouseButton(0) && isDrawing)
+        {
+            UpdateCurrentLine();
+        }
+
+        // 3. Soltar (Terminar corte)
+        if (Input.GetMouseButtonUp(0) && isDrawing)
+        {
+            FinishDrawing();
+        }
+    }
+
+    void StartDrawing()
+    {
+        isDrawing = true;
+        startPoint = Input.mousePosition;
+
+        // Crear línea hija del plato
+        currentLine = Instantiate(linePrefab, linesContainer);
+        currentLine.transform.position = startPoint;
+
+        // Poner tamaño inicial en 0
+        RectTransform rt = currentLine.GetComponent<RectTransform>();
+        rt.sizeDelta = new Vector2(0, rt.sizeDelta.y);
+
+        // Desactivar Raycast de la línea para que no estorbe al mouse
+        if (currentLine.GetComponent<Image>()) currentLine.GetComponent<Image>().raycastTarget = false;
+    }
+
+    void UpdateCurrentLine()
+    {
+        if (currentLine == null) return;
+
+        Vector2 currentPos = Input.mousePosition;
+        Vector2 direction = currentPos - startPoint;
+        float distance = direction.magnitude;
+
+        RectTransform rt = currentLine.GetComponent<RectTransform>();
+
+        // Estirar largo
+        rt.sizeDelta = new Vector2(distance, rt.sizeDelta.y);
+
+        // Rotar hacia el mouse
+        float angle = Mathf.Atan2(direction.y, direction.x) * Mathf.Rad2Deg;
+        rt.rotation = Quaternion.Euler(0, 0, angle);
+    }
+
+    void FinishDrawing()
+    {
+        isDrawing = false;
+
+        RectTransform rt = currentLine.GetComponent<RectTransform>();
+        // Si la línea es muy corta (un error), la borramos
+        if (rt.sizeDelta.x < 20)
+        {
+            Destroy(currentLine);
         }
         else
         {
-            Debug.Log("División Incorrecta - Game Over");
-            StartCoroutine(ShowResultAndNextLevel(false));
+            drawnLines.Add(currentLine);
+        }
+        currentLine = null;
+    }
+
+    // --- LÓGICA DEL JUEGO ---
+
+    void StartLevel()
+    {
+        ClearLines();
+        if (winLoseText) winLoseText.gameObject.SetActive(false);
+        if (levelText) levelText.text = "Level: " + currentLevel;
+
+        // SOLO pedimos fracciones que se pueden cortar tipo Pizza (cruces)
+        // 1/2, 1/4, 1/6, 1/8
+        int[] validFractions = { 2, 4, 6, 8 };
+
+        targetParts = validFractions[Random.Range(0, validFractions.Length)];
+
+        if (instructionText) instructionText.text = "Corta en: 1/" + targetParts;
+    }
+
+    void ClearLines()
+    {
+        foreach (GameObject line in drawnLines) Destroy(line);
+        if (currentLine != null) Destroy(currentLine);
+        drawnLines.Clear();
+    }
+
+    void CheckAnswer()
+    {
+        int linesDrawn = drawnLines.Count;
+        bool isCorrect = false;
+
+        // VALIDACIÓN (Regla de Pizza)
+        // 1/2 necesita 1 línea
+        // 1/4 necesita 2 líneas (cruz)
+        // 1/6 necesita 3 líneas (asterisco)
+        // 1/8 necesita 4 líneas (doble cruz)
+
+        if (targetParts == 2 && linesDrawn == 1) isCorrect = true;
+        else if (targetParts == 4 && linesDrawn == 2) isCorrect = true;
+        else if (targetParts == 6 && linesDrawn == 3) isCorrect = true;
+        else if (targetParts == 8 && linesDrawn == 4) isCorrect = true;
+
+        // Validación extra por si alguien hace cortes paralelos para 1/4 (3 líneas)
+        else if (targetParts == 4 && linesDrawn == 3) isCorrect = true;
+
+        if (isCorrect)
+        {
+            Debug.Log("¡Correcto!");
+            StartCoroutine(NextLevelSequence(true));
+        }
+        else
+        {
+            Debug.Log("Incorrecto. Se pidieron 1/" + targetParts + " y dibujaste " + linesDrawn + " líneas.");
+            StartCoroutine(NextLevelSequence(false));
         }
     }
 
-    IEnumerator ShowResultAndNextLevel(bool success)
+    IEnumerator NextLevelSequence(bool success)
     {
         if (winLoseText)
         {
@@ -135,31 +196,33 @@ public class FractionManager : MonoBehaviour
             winLoseText.color = success ? Color.green : Color.red;
         }
 
-        if (divideButton) divideButton.GetComponent<Button>().interactable = false; // Desactivar botón
+        if (checkButton) checkButton.interactable = false;
+        if (cleanButton) cleanButton.interactable = false;
 
-        yield return new WaitForSeconds(1.5f); // Esperar para que el jugador vea el resultado
+        yield return new WaitForSeconds(1.5f);
 
-        if (divideButton) divideButton.GetComponent<Button>().interactable = true; // Reactivar botón
+        if (checkButton) checkButton.interactable = true;
+        if (cleanButton) cleanButton.interactable = true;
 
         if (success)
         {
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel); // Guardar progreso antes de avanzar
+            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
             currentLevel++;
             StartLevel();
         }
         else
         {
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel); // Guardar progreso antes de reiniciar
+            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
             StartCoroutine(GameOverSequence());
         }
     }
 
     IEnumerator GameOverSequence()
     {
-        if (winLoseText) winLoseText.gameObject.SetActive(false); // Esconder "Incorrecto"
+        if (winLoseText) winLoseText.gameObject.SetActive(false);
         if (gameOverText)
         {
-            gameOverText.GetComponent<Text>().text = "GAME OVER";
+            if (gameOverText.GetComponent<Text>()) gameOverText.GetComponent<Text>().text = "GAME OVER";
             gameOverText.SetActive(true);
         }
         yield return new WaitForSeconds(2f);
