@@ -1,44 +1,57 @@
 using System.Collections;
 using System.Collections.Generic;
-using TMPro;
+using TMPro; // Usamos TextMeshPro
 using UnityEngine;
 using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-    [Header("UI References")]
+    [Header("UI Referencias")]
     public TextMeshProUGUI centerText; // El resultado objetivo
     public TextMeshProUGUI levelText;
     public Button confirmButton;
-    public List<PetalController> petals; // Arrastra todos los pétalos aquí en el inspector
+    public List<PetalController> petals; // Arrastra todos los pétalos aquí
 
-    [Header("Game State")]
+    [Header("UI Puntuación")] // NUEVO: Sección para los puntos
+    public TextMeshProUGUI scoreText; // Arrastra aquí tu texto de "Puntos: 0"
+
+    [Header("UI Juego")]
+    public GameObject gameOverText; // Arrastra aquí un texto de "GAME OVER" (opcional)
+
+    [Header("Estado del Juego")]
     public int currentLevel = 1;
     private int targetResult;
+
+    // Variables de Puntuación
+    private int currentScore = 0;       // NUEVO
+    private int pointsPerLevel = 15;    // NUEVO: Puntos por nivel completado
 
     // Referencia al DatabaseManager
     private DatabaseManager dbManager;
 
     void Start()
     {
-        // CORRECCIÓN 1: Usamos FindObjectOfType por si pusiste el script en otro objeto por error.
-        // Es más seguro que GetComponent.
+        // Ocultar Game Over al inicio
+        if (gameOverText) gameOverText.SetActive(false);
+
+        // NUEVO: Iniciar UI de puntos
+        UpdateScoreUI();
+
+        // Conexión segura con la base de datos
         dbManager = FindObjectOfType<DatabaseManager>();
 
-        // CORRECCIÓN 2: Protección contra errores (Null Check)
         if (dbManager != null)
         {
             currentLevel = dbManager.LoadLevel();
         }
         else
         {
-            Debug.LogWarning("No se encontró DatabaseManager. Iniciando en Nivel 1 por defecto.");
+            Debug.LogWarning("No se encontró DatabaseManager. Iniciando en Nivel 1.");
             currentLevel = 1;
         }
 
         levelText.text = "Nivel: " + currentLevel;
 
-        // Limpiamos los listeners anteriores por seguridad y agregamos el nuevo
         confirmButton.onClick.RemoveAllListeners();
         confirmButton.onClick.AddListener(CheckAnswer);
 
@@ -62,11 +75,12 @@ public class GameManager : MonoBehaviour
         values.Add(factorA);
         values.Add(factorB);
 
-        // Llenar el resto con números random
+        // Llenar el resto con números random (distractores)
         for (int i = 2; i < petals.Count; i++)
         {
             int randomVal = Random.Range(2, maxRange + 5);
-            // Pequeña mejora: Evitar que el distractor sea igual al resultado (opcional pero recomendado)
+
+            // Evitar que el distractor sea igual al resultado
             while (randomVal == targetResult)
             {
                 randomVal = Random.Range(2, maxRange + 5);
@@ -82,7 +96,6 @@ public class GameManager : MonoBehaviour
         {
             if (i < values.Count)
             {
-                // Esto llama al Setup del pétalo, que reinicia su color y selección automáticamente
                 petals[i].Setup(values[i]);
             }
         }
@@ -102,17 +115,22 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // CORRECCIÓN 3: Aseguramos que solo validamos si hay al menos 2 pétalos seleccionados
-        // (porque una multiplicación necesita al menos dos factores)
+        // VALIDACIÓN: Necesitamos al menos 2 pétalos y que el producto sea exacto
         if (petalsSelectedCount >= 2 && currentProduct == targetResult)
         {
             Debug.Log("¡Correcto!");
+
+            // NUEVO: Sumar puntos
+            currentScore += pointsPerLevel;
+            UpdateScoreUI();
+
             LevelUp();
         }
         else
         {
-            Debug.Log("Incorrecto. Resultado actual: " + currentProduct + " / Objetivo: " + targetResult);
-            // Opcional: Aquí podrías añadir un efecto visual de error
+            Debug.Log("Incorrecto. Game Over.");
+            // Si te equivocas en la multiplicación, pierdes el avance
+            StartCoroutine(GameOverSequence());
         }
     }
 
@@ -121,13 +139,53 @@ public class GameManager : MonoBehaviour
         currentLevel++;
         levelText.text = "Nivel: " + currentLevel;
 
-        // Guardar progreso solo si existe la base de datos
+        // Guardar progreso
         if (dbManager != null)
         {
             dbManager.SaveProgress(currentLevel);
         }
 
         GenerateLevel();
+    }
+
+    // NUEVO: Secuencia de Game Over
+    IEnumerator GameOverSequence()
+    {
+        if (gameOverText) gameOverText.SetActive(true);
+
+        // Bloquear botón para que no sigan pulsando
+        confirmButton.interactable = false;
+
+        yield return new WaitForSeconds(2f);
+
+        if (gameOverText) gameOverText.SetActive(false);
+        confirmButton.interactable = true;
+
+        // Reiniciar puntos y nivel
+        currentScore = 0;
+        UpdateScoreUI();
+
+        // Opcional: ¿Quieres que el nivel vuelva a 1 o que solo se reinicie el actual?
+        // Aquí lo dejo para que vuelva a 1 (mayor dificultad).
+        currentLevel = 1;
+        levelText.text = "Nivel: " + currentLevel;
+
+        GenerateLevel();
+    }
+
+    // NUEVO: Actualizar texto de puntos
+    void UpdateScoreUI()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Puntos: " + currentScore.ToString();
+        }
+    }
+
+    // NUEVO: Para leer los puntos desde fuera
+    public int GetCurrentScore()
+    {
+        return currentScore;
     }
 
     void Shuffle<T>(List<T> list)
