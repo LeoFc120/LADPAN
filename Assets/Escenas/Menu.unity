@@ -158,7 +158,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 258, y: 313}
+  m_AnchoredPosition: {x: -278, y: 301}
   m_SizeDelta: {x: 448.3955, y: 231.003}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &51459226
@@ -205,16 +205,16 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 910931789}
-        m_TargetAssemblyTypeName: LogicaBotones, Assembly-CSharp
-        m_MethodName: Sumas
-        m_Mode: 1
+      - m_Target: {fileID: 910931791}
+        m_TargetAssemblyTypeName: NavegacionMenu, Assembly-CSharp
+        m_MethodName: IrAEscena
+        m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: 
+          m_StringArgument: Sumas
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &51459227
@@ -291,7 +291,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -287, y: -170}
+  m_AnchoredPosition: {x: 284.88, y: 301}
   m_SizeDelta: {x: 448.3955, y: 231.003}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &126291780
@@ -338,16 +338,16 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 910931789}
-        m_TargetAssemblyTypeName: LogicaBotones, Assembly-CSharp
-        m_MethodName: Restas
-        m_Mode: 1
+      - m_Target: {fileID: 910931791}
+        m_TargetAssemblyTypeName: NavegacionMenu, Assembly-CSharp
+        m_MethodName: IrAEscena
+        m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: 
+          m_StringArgument: Restas
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &126291781
@@ -971,6 +971,7 @@ GameObject:
   m_Component:
   - component: {fileID: 910931790}
   - component: {fileID: 910931789}
+  - component: {fileID: 910931791}
   m_Layer: 0
   m_Name: FuncionBotones
   m_TagString: Untagged
@@ -1005,6 +1006,18 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &910931791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 910931788}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 202b034ab71361d43bbcd7768f31cb9d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1619241973
 GameObject:
   m_ObjectHideFlags: 0
@@ -1088,16 +1101,16 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 910931789}
-        m_TargetAssemblyTypeName: LogicaBotones, Assembly-CSharp
-        m_MethodName: acercaden
-        m_Mode: 1
+      - m_Target: {fileID: 910931791}
+        m_TargetAssemblyTypeName: NavegacionMenu, Assembly-CSharp
+        m_MethodName: IrAEscena
+        m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: 
+          m_StringArgument: Acercaden
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &1619241976
@@ -1328,16 +1341,16 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 910931789}
-        m_TargetAssemblyTypeName: LogicaBotones, Assembly-CSharp
-        m_MethodName: Multiplicaciones
-        m_Mode: 1
+      - m_Target: {fileID: 910931791}
+        m_TargetAssemblyTypeName: NavegacionMenu, Assembly-CSharp
+        m_MethodName: IrAEscena
+        m_Mode: 5
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
           m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
-          m_StringArgument: 
+          m_StringArgument: Multiplicaciones
           m_BoolArgument: 0
         m_CallState: 2
 --- !u!114 &1712238262
@@ -1761,9 +1774,29 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 4066920428191664692, guid: 02bea96a0ec1add48b64a07d157d8f4c,
         type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Mode
+      value: 5
+      objectReference: {fileID: 0}
+    - target: {fileID: 4066920428191664692, guid: 02bea96a0ec1add48b64a07d157d8f4c,
+        type: 3}
       propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Target
       value: 
-      objectReference: {fileID: 910931789}
+      objectReference: {fileID: 910931791}
+    - target: {fileID: 4066920428191664692, guid: 02bea96a0ec1add48b64a07d157d8f4c,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_MethodName
+      value: IrAEscena
+      objectReference: {fileID: 0}
+    - target: {fileID: 4066920428191664692, guid: 02bea96a0ec1add48b64a07d157d8f4c,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_TargetAssemblyTypeName
+      value: NavegacionMenu, Assembly-CSharp
+      objectReference: {fileID: 0}
+    - target: {fileID: 4066920428191664692, guid: 02bea96a0ec1add48b64a07d157d8f4c,
+        type: 3}
+      propertyPath: m_OnClick.m_PersistentCalls.m_Calls.Array.data[0].m_Arguments.m_StringArgument
+      value: Fracciones
+      objectReference: {fileID: 0}
     - target: {fileID: 7700715466055409806, guid: 02bea96a0ec1add48b64a07d157d8f4c,
         type: 3}
       propertyPath: m_Pivot.x
@@ -1842,12 +1875,12 @@ PrefabInstance:
     - target: {fileID: 7700715466055409806, guid: 02bea96a0ec1add48b64a07d157d8f4c,
         type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: -287
+      value: -278
       objectReference: {fileID: 0}
     - target: {fileID: 7700715466055409806, guid: 02bea96a0ec1add48b64a07d157d8f4c,
         type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: 313
+      value: -170
       objectReference: {fileID: 0}
     - target: {fileID: 7700715466055409806, guid: 02bea96a0ec1add48b64a07d157d8f4c,
         type: 3}
