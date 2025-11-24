@@ -1,9 +1,10 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 
-public class RegistroUI
+public class RegistroUI : MonoBehaviour
 {
     public TMP_InputField InputNombre;
     public TMP_InputField InputEdad;
