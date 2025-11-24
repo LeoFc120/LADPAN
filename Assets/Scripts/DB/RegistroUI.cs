@@ -22,7 +22,10 @@ public class RegistroUI : MonoBehaviour
         int edad = int.Parse(InputEdad.text);
         string fechaReg = texto.text;
 
-        UserData nuevo = new UserData(nombre, edad, fechaReg);
+        UserData nuevo = new UserData();
+        nuevo.nombre = nombre;
+        nuevo.edad = edad;
+        nuevo.fechaRegistro = fechaReg;
 
         DataBase.GuardarUsuario(nuevo);
 
