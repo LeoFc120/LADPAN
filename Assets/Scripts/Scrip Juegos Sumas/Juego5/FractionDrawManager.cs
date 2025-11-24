@@ -6,20 +6,23 @@ using UnityEngine.UI;
 public class FractionDrawManager : MonoBehaviour
 {
     [Header("UI Textos")]
-    public Text instructionText; // "Corta en: 1/2"
-    public Text hintText;        // NUEVO: "Usa X líneas"
+    public Text instructionText;
+    public Text hintText;
     public Text levelText;
     public Text winLoseText;
     public GameObject gameOverText;
 
+    [Header("UI Puntuación")] // NUEVO: Sección para los puntos
+    public Text scoreText;    // Arrastra aquí tu texto de "Puntos: 0"
+
     [Header("Zona de Dibujo")]
-    public RectTransform drawingArea; // La imagen del plato
-    public GameObject linePrefab;     // Prefab línea (Pivot X=0, Y=0.5)
-    public Transform linesContainer;  // Contenedor (el plato)
+    public RectTransform drawingArea;
+    public GameObject linePrefab;
+    public Transform linesContainer;
 
     [Header("Botones")]
-    public Button checkButton; // TRAZAR
-    public Button cleanButton; // BORRAR
+    public Button checkButton;
+    public Button cleanButton;
 
     [Header("Base de Datos")]
     public LevelSaver databaseScript;
@@ -27,8 +30,12 @@ public class FractionDrawManager : MonoBehaviour
     // Variables de Juego
     private int currentLevel = 1;
     private int targetParts;
-    private int linesNeeded; // NUEVO: Para guardar cuántas líneas se esperan
+    private int linesNeeded;
     private List<GameObject> drawnLines = new List<GameObject>();
+
+    // Variables de Puntuación
+    private int currentScore = 0;       // NUEVO: Variable interna de puntos
+    private int pointsPerLevel = 100;   // NUEVO: Cuántos puntos das por acierto
 
     // Variables para el Dibujo
     private GameObject currentLine;
@@ -42,6 +49,9 @@ public class FractionDrawManager : MonoBehaviour
 
         if (checkButton) checkButton.onClick.AddListener(CheckAnswer);
         if (cleanButton) cleanButton.onClick.AddListener(ClearLines);
+
+        // NUEVO: Asegurarnos de que el score empiece en 0 visualmente
+        UpdateScoreUI();
 
         StartLevel();
     }
@@ -124,16 +134,12 @@ public class FractionDrawManager : MonoBehaviour
         int[] validFractions = { 2, 4, 6, 8 };
         targetParts = validFractions[Random.Range(0, validFractions.Length)];
 
-        // CALCULAR PISTA DE LÍNEAS
         if (targetParts == 2) linesNeeded = 1;
         else if (targetParts == 4) linesNeeded = 2;
         else if (targetParts == 6) linesNeeded = 3;
         else if (targetParts == 8) linesNeeded = 4;
 
-        // Actualizar Textos
         if (instructionText) instructionText.text = "Corta en: 1/" + targetParts;
-
-        // AQUÍ MOSTRAMOS LA AYUDA
         if (hintText) hintText.text = "(Usa " + linesNeeded + " líneas)";
     }
 
@@ -149,10 +155,7 @@ public class FractionDrawManager : MonoBehaviour
         int linesDrawn = drawnLines.Count;
         bool isCorrect = false;
 
-        // Validación estricta usando la variable linesNeeded
         if (linesDrawn == linesNeeded) isCorrect = true;
-
-        // Excepción: 1/4 también se puede hacer con 3 líneas paralelas (aunque es raro)
         if (targetParts == 4 && linesDrawn == 3) isCorrect = true;
 
         if (isCorrect)
@@ -186,12 +189,20 @@ public class FractionDrawManager : MonoBehaviour
 
         if (success)
         {
+            // NUEVO: Sumar puntos
+            currentScore += pointsPerLevel;
+            UpdateScoreUI();
+
+            // Aquí podrías actualizar SaveProgress para que guarde nivel Y puntos si quieres
+            // Ejemplo: databaseScript.SaveProgress(currentLevel, currentScore);
             if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+
             currentLevel++;
             StartLevel();
         }
         else
         {
+            // Nota: Si pierdes, ¿guardas el puntaje acumulado antes de perder?
             if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
             StartCoroutine(GameOverSequence());
         }
@@ -207,7 +218,27 @@ public class FractionDrawManager : MonoBehaviour
         }
         yield return new WaitForSeconds(2f);
         if (gameOverText) gameOverText.SetActive(false);
+
+        // NUEVO: Reiniciar Puntuación al perder
+        currentScore = 0;
+        UpdateScoreUI();
+
         currentLevel = 1;
         StartLevel();
+    }
+
+    // NUEVO: Función auxiliar para actualizar el texto
+    void UpdateScoreUI()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Puntos: " + currentScore.ToString();
+        }
+    }
+
+    // NUEVO: Función pública para que la base de datos pueda leer los puntos
+    public int GetCurrentScore()
+    {
+        return currentScore;
     }
 }

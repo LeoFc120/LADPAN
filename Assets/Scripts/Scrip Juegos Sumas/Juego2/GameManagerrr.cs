@@ -9,6 +9,9 @@ public class GameManagerrr : MonoBehaviour
     public Text[] row1Texts;
     public DropSlot row1Slot;
 
+    [Header("UI Puntuación")] // NUEVO: Sección de puntos
+    public Text scoreText;    // Arrastra aquí tu texto de "Puntos: 0"
+
     public Text[] row2Texts;
     public DropSlot row2Slot;
 
@@ -21,15 +24,26 @@ public class GameManagerrr : MonoBehaviour
     public Transform answersParent;
 
     [Header("UI Juego")]
-    public GameObject gameOverText; // Arrastra aquí tu texto de Game Over
+    public GameObject gameOverText; // Arrastra aquí tu texto de Fin del Juego
+
+    [Header("Base de Datos")] // NUEVO
+    public LevelSaver databaseScript;
 
     // Variables de estado
     private int currentLevel = 1;
     private int correctCount = 0; // Cuántas lleva bien en este nivel
 
+    // Variables de Puntuación
+    private int currentScore = 0;      // NUEVO
+    private int pointsPerLevel = 30;  // NUEVO: 100 puntos por cada ecuación, se dan juntos al final
+
     void Start()
     {
         gameOverText.SetActive(false); // Asegurar que esté apagado
+
+        // NUEVO: Iniciar UI de puntos
+        UpdateScoreUI();
+
         GenerateLevel();
     }
 
@@ -75,9 +89,8 @@ public class GameManagerrr : MonoBehaviour
             answerOptions[i].gameObject.SetActive(true);
             answerOptions[i].GetComponent<CanvasGroup>().blocksRaycasts = true;
 
-            // --- 2. CAMBIA LA LÍNEA LARGA POR ESTA CORTA ---
+            // Mover al padre correcto
             answerOptions[i].transform.SetParent(answersParent);
-            // -----------------------------------------------
 
             // Esto asegura que la escala sea 1 (a veces se hace pequeña al cambiar de padre)
             answerOptions[i].transform.localScale = Vector3.one;
@@ -88,7 +101,6 @@ public class GameManagerrr : MonoBehaviour
     {
         // FORMULA DE DIFICULTAD:
         // Nivel 1: Números entre 5 y 12
-        // Nivel 2: Números entre 7 y 17... etc.
         int minNum = 5 + (currentLevel * 2);
         int maxNum = 10 + (currentLevel * 5);
 
@@ -113,6 +125,14 @@ public class GameManagerrr : MonoBehaviour
             if (correctCount >= 3)
             {
                 Debug.Log("¡Nivel Completado! Subiendo dificultad.");
+
+                // NUEVO: Sumar puntos solo al completar las 3
+                currentScore += pointsPerLevel;
+                UpdateScoreUI();
+
+                // Guardar en Base de Datos
+                if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+
                 currentLevel++; // SUBE NIVEL
                 Invoke("GenerateLevel", 1f); // Espera 1 segundo y genera el siguiente
             }
@@ -120,16 +140,42 @@ public class GameManagerrr : MonoBehaviour
         else
         {
             // PERDIO
+            // Si falla UNA sola ecuación, pierde.
+            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
             StartCoroutine(GameOverSequence());
         }
+    }
+
+    // NUEVO: Función para actualizar texto
+    void UpdateScoreUI()
+    {
+        if (scoreText != null)
+        {
+            scoreText.text = "Puntos: " + currentScore.ToString();
+        }
+    }
+
+    // NUEVO: Getter público
+    public int GetCurrentScore()
+    {
+        return currentScore;
     }
 
     IEnumerator GameOverSequence()
     {
         gameOverText.SetActive(true); // Mostrar texto
+
+        // Opcional: Asegurar que el texto diga algo en español si tiene un componente Text
+        if (gameOverText.GetComponent<Text>()) gameOverText.GetComponent<Text>().text = "¡HAS FALLADO!";
+
         yield return new WaitForSeconds(2f); // Esperar 2 segundos
 
         gameOverText.SetActive(false);
+
+        // NUEVO: Reiniciar puntos al perder
+        currentScore = 0;
+        UpdateScoreUI();
+
         currentLevel = 1; // REINICIAR NIVEL A 1
         GenerateLevel(); // Empezar de nuevo
     }

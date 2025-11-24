@@ -1018,7 +1018,7 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
+      - m_Target: {fileID: 71103202}
         m_TargetAssemblyTypeName: NavegacionMenu, Assembly-CSharp
         m_MethodName: IrAEscena
         m_Mode: 5
