@@ -47,4 +47,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Escenas/JuegoM2.unity
     guid: 5d3c1c7792b88da439a95c86a87c84b8
+  - enabled: 1
+    path: Assets/Escenas/Juego1F.unity
+    guid: 0936061573a2c8d41a61647c43c240a9
   m_configObjects: {}
