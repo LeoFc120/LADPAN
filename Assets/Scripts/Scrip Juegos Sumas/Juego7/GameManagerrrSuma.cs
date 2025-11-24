@@ -9,6 +9,9 @@ public class GameManagerrrSuma : MonoBehaviour
     public Text[] row1Texts;
     public DropSlot row1Slot;
 
+    [Header("UI Puntuación")]
+    public Text scoreText;    // Arrastra aquí tu texto de Puntos
+
     public Text[] row2Texts;
     public DropSlot row2Slot;
 
@@ -23,16 +26,27 @@ public class GameManagerrrSuma : MonoBehaviour
     [Header("UI Juego")]
     public GameObject gameOverText;
 
-    [Header("Base de Datos")]
-    public LevelSaver databaseScript; // <--- AGREGADO PARA GUARDAR PROGRESO
+    // --- CAMBIO: Referencia vieja borrada ---
+    // public LevelSaver databaseScript; // BORRADO
 
     // Variables de estado
     private int currentLevel = 1;
     private int correctCount = 0;
 
+    // Variables de Puntuación
+    private int currentScore = 0;
+    private int pointsPerLevel = 30; // Puntos por completar las 3 sumas
+
+    // ID ÚNICO PARA ESTE JUEGO
+    private string gameID = "JuegoSumas";
+
     void Start()
     {
         if (gameOverText) gameOverText.SetActive(false);
+
+        // Iniciar puntos en 0
+        UpdateScoreUI();
+
         GenerateLevel();
     }
 
@@ -87,16 +101,14 @@ public class GameManagerrrSuma : MonoBehaviour
     void SetupEquation(Text[] texts, DropSlot slot, List<int> answers)
     {
         // FORMULA DE DIFICULTAD PARA SUMAS:
-        // Nivel 1: Sumas sencillas (ej. 5 + 3)
-        // Nivel 2: Un poco más altas
         int maxNum = 8 + (currentLevel * 2);
 
         int numA = Random.Range(1, maxNum);
-        int numB = Random.Range(1, maxNum); // Aquí B puede ser mayor que A sin problemas
+        int numB = Random.Range(1, maxNum);
 
-        // --- CAMBIO PRINCIPAL: SUMA ---
+        // --- LÓGICA DE SUMA ---
         int result = numA + numB;
-        // ------------------------------
+        // -----------------------
 
         texts[0].text = numA.ToString();
         texts[1].text = numB.ToString();
@@ -113,8 +125,16 @@ public class GameManagerrrSuma : MonoBehaviour
             if (correctCount >= 3)
             {
                 Debug.Log("¡Nivel Completado!");
-                // Guardar progreso al ganar
-                if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+
+                // Sumar puntos
+                currentScore += pointsPerLevel;
+                UpdateScoreUI();
+
+                // (Opcional) Guardar progreso de NIVEL
+                if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+                {
+                    DatabaseManager.Instance.SaveProgress(GameSession.Current.CurrentUser.Id, currentLevel);
+                }
 
                 currentLevel++;
                 Invoke("GenerateLevel", 1f);
@@ -122,10 +142,21 @@ public class GameManagerrrSuma : MonoBehaviour
         }
         else
         {
-            // Guardar progreso al perder (el nivel al que llegó)
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
-
+            // AL PERDER: Guardar PUNTAJE final
+            SaveMyScore();
             StartCoroutine(GameOverSequence());
+        }
+    }
+
+    // --- NUEVO: Guardar en la DB ---
+    void SaveMyScore()
+    {
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+        {
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            // Guardamos con el ID "JuegoSumas"
+            DatabaseManager.Instance.SaveScore(myUserId, gameID, currentScore);
+            Debug.Log($"Puntaje de Sumas guardado: {currentScore}");
         }
     }
 
@@ -135,8 +166,18 @@ public class GameManagerrrSuma : MonoBehaviour
         yield return new WaitForSeconds(2f);
 
         if (gameOverText) gameOverText.SetActive(false);
+
+        // Reiniciar puntos y nivel
+        currentScore = 0;
+        UpdateScoreUI();
+
         currentLevel = 1;
         GenerateLevel();
+    }
+
+    void UpdateScoreUI()
+    {
+        if (scoreText != null) scoreText.text = "Puntos: " + currentScore.ToString();
     }
 
     void Shuffle<T>(List<T> list)

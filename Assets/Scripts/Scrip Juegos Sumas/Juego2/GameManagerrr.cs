@@ -6,11 +6,13 @@ using UnityEngine;
 public class GameManagerrr : MonoBehaviour
 {
     [Header("Referencias UI Ecuaciones")]
+    // En tu inspector veo que Row 1 Texts tiene Size 2.
+    // texts[0] será el primer número, texts[1] será el segundo.
     public Text[] row1Texts;
     public DropSlot row1Slot;
 
-    [Header("UI Puntuación")] // NUEVO: Sección de puntos
-    public Text scoreText;    // Arrastra aquí tu texto de "Puntos: 0"
+    [Header("UI Puntuación")]
+    public Text scoreText;    // Veo en tu foto que ya asignaste "puntos (Text)". ¡Bien!
 
     public Text[] row2Texts;
     public DropSlot row2Slot;
@@ -24,56 +26,56 @@ public class GameManagerrr : MonoBehaviour
     public Transform answersParent;
 
     [Header("UI Juego")]
-    public GameObject gameOverText; // Arrastra aquí tu texto de Fin del Juego
+    public GameObject gameOverText;
 
-    [Header("Base de Datos")] // NUEVO
-    public LevelSaver databaseScript;
+    // --- CAMBIO IMPORTANTE ---
+    // He borrado la variable "public LevelSaver databaseScript"
+    // Al guardar este script, esa casilla vacía en tu inspector DESAPARECERÁ.
 
     // Variables de estado
     private int currentLevel = 1;
-    private int correctCount = 0; // Cuántas lleva bien en este nivel
+    private int correctCount = 0;
 
     // Variables de Puntuación
-    private int currentScore = 0;      // NUEVO
-    private int pointsPerLevel = 30;  // NUEVO: 100 puntos por cada ecuación, se dan juntos al final
+    private int currentScore = 0;
+    private int pointsPerLevel = 30;
+
+    // ID ÚNICO: Como es la pizarra verde, le ponemos este ID para el Ranking
+    private string gameID = "JuegoRestas";
 
     void Start()
     {
-        gameOverText.SetActive(false); // Asegurar que esté apagado
+        if (gameOverText) gameOverText.SetActive(false);
 
-        // NUEVO: Iniciar UI de puntos
         UpdateScoreUI();
-
         GenerateLevel();
     }
 
     public void GenerateLevel()
     {
-        correctCount = 0; // Reiniciar contador
+        correctCount = 0;
 
-        // Limpiar los slots (marcarlos como vacíos)
+        // Limpiar los slots
         row1Slot.isFilled = false;
         row2Slot.isFilled = false;
         row3Slot.isFilled = false;
 
-        // Limpiar textos viejos de los slots
         row1Slot.GetComponentInChildren<Text>().text = "";
         row2Slot.GetComponentInChildren<Text>().text = "";
         row3Slot.GetComponentInChildren<Text>().text = "";
 
         List<int> correctAnswers = new List<int>();
 
-        // Generar ecuaciones con dificultad basada en el nivel
+        // Generar ecuaciones
         SetupEquation(row1Texts, row1Slot, correctAnswers);
         SetupEquation(row2Texts, row2Slot, correctAnswers);
         SetupEquation(row3Texts, row3Slot, correctAnswers);
 
-        // Rellenar respuestas (Correctas + Falsas)
+        // Rellenar respuestas
         List<int> finalOptions = new List<int>(correctAnswers);
 
         while (finalOptions.Count < answerOptions.Length)
         {
-            // Los números falsos también crecen con el nivel para despistar
             int fakeMax = 15 + (currentLevel * 5);
             int fakeNumber = Random.Range(1, fakeMax);
             if (!finalOptions.Contains(fakeNumber)) finalOptions.Add(fakeNumber);
@@ -81,7 +83,6 @@ public class GameManagerrr : MonoBehaviour
 
         Shuffle(finalOptions);
 
-        // Mostrar fichas
         for (int i = 0; i < answerOptions.Length; i++)
         {
             answerOptions[i].numberValue = finalOptions[i];
@@ -89,23 +90,19 @@ public class GameManagerrr : MonoBehaviour
             answerOptions[i].gameObject.SetActive(true);
             answerOptions[i].GetComponent<CanvasGroup>().blocksRaycasts = true;
 
-            // Mover al padre correcto
-            answerOptions[i].transform.SetParent(answersParent);
-
-            // Esto asegura que la escala sea 1 (a veces se hace pequeña al cambiar de padre)
+            if (answersParent != null) answerOptions[i].transform.SetParent(answersParent);
             answerOptions[i].transform.localScale = Vector3.one;
         }
     }
 
     void SetupEquation(Text[] texts, DropSlot slot, List<int> answers)
     {
-        // FORMULA DE DIFICULTAD:
-        // Nivel 1: Números entre 5 y 12
+        // LOGICA DE RESTAS (Coincide con tu pizarra verde)
         int minNum = 5 + (currentLevel * 2);
         int maxNum = 10 + (currentLevel * 5);
 
         int numA = Random.Range(minNum, maxNum);
-        int numB = Random.Range(1, numA); // B siempre menor para evitar negativos
+        int numB = Random.Range(1, numA); // B menor que A para que no de negativo
         int result = numA - numB;
 
         texts[0].text = numA.ToString();
@@ -115,38 +112,49 @@ public class GameManagerrr : MonoBehaviour
         answers.Add(result);
     }
 
-    // Esta función la llama el DropSlot
     public void CheckAnswer(bool isCorrect)
     {
         if (isCorrect)
         {
             correctCount++;
-            // Si completó las 3 ecuaciones...
+
             if (correctCount >= 3)
             {
-                Debug.Log("¡Nivel Completado! Subiendo dificultad.");
+                Debug.Log("¡Nivel Completado!");
 
-                // NUEVO: Sumar puntos solo al completar las 3
+                // Sumar puntos
                 currentScore += pointsPerLevel;
                 UpdateScoreUI();
 
-                // Guardar en Base de Datos
-                if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+                // Guardar progreso de NIVEL (Opcional, si quieres guardar en qué nivel va)
+                if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+                {
+                    DatabaseManager.Instance.SaveProgress(GameSession.Current.CurrentUser.Id, currentLevel);
+                }
 
-                currentLevel++; // SUBE NIVEL
-                Invoke("GenerateLevel", 1f); // Espera 1 segundo y genera el siguiente
+                currentLevel++;
+                Invoke("GenerateLevel", 1f);
             }
         }
         else
         {
-            // PERDIO
-            // Si falla UNA sola ecuación, pierde.
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+            // AL PERDER: Guardamos el PUNTAJE final
+            SaveMyScore();
             StartCoroutine(GameOverSequence());
         }
     }
 
-    // NUEVO: Función para actualizar texto
+    // Guardar en la DB usando el ID "JuegoRestas"
+    void SaveMyScore()
+    {
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+        {
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            DatabaseManager.Instance.SaveScore(myUserId, gameID, currentScore);
+            Debug.Log($"Puntaje de Restas guardado: {currentScore}");
+        }
+    }
+
     void UpdateScoreUI()
     {
         if (scoreText != null)
@@ -155,29 +163,20 @@ public class GameManagerrr : MonoBehaviour
         }
     }
 
-    // NUEVO: Getter público
-    public int GetCurrentScore()
-    {
-        return currentScore;
-    }
-
     IEnumerator GameOverSequence()
     {
-        gameOverText.SetActive(true); // Mostrar texto
+        if (gameOverText) gameOverText.SetActive(true);
 
-        // Opcional: Asegurar que el texto diga algo en español si tiene un componente Text
-        if (gameOverText.GetComponent<Text>()) gameOverText.GetComponent<Text>().text = "¡HAS FALLADO!";
+        yield return new WaitForSeconds(2f);
 
-        yield return new WaitForSeconds(2f); // Esperar 2 segundos
+        if (gameOverText) gameOverText.SetActive(false);
 
-        gameOverText.SetActive(false);
-
-        // NUEVO: Reiniciar puntos al perder
+        // Reiniciar
         currentScore = 0;
         UpdateScoreUI();
 
-        currentLevel = 1; // REINICIAR NIVEL A 1
-        GenerateLevel(); // Empezar de nuevo
+        currentLevel = 1;
+        GenerateLevel();
     }
 
     void Shuffle<T>(List<T> list)
