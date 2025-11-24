@@ -29,7 +29,22 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Escenas/Acercaden.unity
     guid: 20a3c1e80b5f27e438236b9353e98e1e
-  - enabled: 1
+  - enabled: 0
     path: Assets/Escenas/Juego1S.unity
     guid: d0a32776d5ecdd546b66a0327ace983d
+  - enabled: 1
+    path: Assets/Escenas/Juego1R.unity
+    guid: 13b8c6ef9c6537b409c2aa1d30274be4
+  - enabled: 1
+    path: Assets/Escenas/Juego2S.unity
+    guid: 9e5fc922f1391114a919e813d723a26f
+  - enabled: 1
+    path: Assets/Escenas/Juego3S.unity
+    guid: 56d153bf644e82642b9a91bfcebc200d
+  - enabled: 1
+    path: Assets/Escenas/JuegoM1.unity
+    guid: 7d1a3f58845e1ca4e9f9c004963330bb
+  - enabled: 1
+    path: Assets/Escenas/JuegoM2.unity
+    guid: 5d3c1c7792b88da439a95c86a87c84b8
   m_configObjects: {}
