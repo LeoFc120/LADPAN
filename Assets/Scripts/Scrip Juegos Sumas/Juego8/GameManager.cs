@@ -12,41 +12,42 @@ public class GameManager : MonoBehaviour
     public Button confirmButton;
     public List<PetalController> petals; // Arrastra todos los pétalos aquí
 
-    [Header("UI Puntuación")] // NUEVO: Sección para los puntos
+    [Header("UI Puntuación")]
     public TextMeshProUGUI scoreText; // Arrastra aquí tu texto de "Puntos: 0"
 
     [Header("UI Juego")]
-    public GameObject gameOverText; // Arrastra aquí un texto de "GAME OVER" (opcional)
+    public GameObject gameOverText; // Texto de "GAME OVER"
 
     [Header("Estado del Juego")]
     public int currentLevel = 1;
     private int targetResult;
 
     // Variables de Puntuación
-    private int currentScore = 0;       // NUEVO
-    private int pointsPerLevel = 15;    // NUEVO: Puntos por nivel completado
+    private int currentScore = 0;
+    private int pointsPerLevel = 15;
 
-    // Referencia al DatabaseManager
-    private DatabaseManager dbManager;
+    // ID ÚNICO PARA ESTE JUEGO
+    private string gameID = "JuegoFlores";
 
     void Start()
     {
         // Ocultar Game Over al inicio
         if (gameOverText) gameOverText.SetActive(false);
 
-        // NUEVO: Iniciar UI de puntos
+        // Iniciar UI de puntos
         UpdateScoreUI();
 
-        // Conexión segura con la base de datos
-        dbManager = FindObjectOfType<DatabaseManager>();
-
-        if (dbManager != null)
+        // --- CARGA DE NIVEL (Opcional) ---
+        // Si quieres que el juego recuerde en qué nivel se quedó el usuario:
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
         {
-            currentLevel = dbManager.LoadLevel();
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            // Cargamos el nivel guardado
+            currentLevel = DatabaseManager.Instance.LoadLevel(myUserId);
         }
         else
         {
-            Debug.LogWarning("No se encontró DatabaseManager. Iniciando en Nivel 1.");
+            Debug.LogWarning("Modo prueba: Iniciando en Nivel 1.");
             currentLevel = 1;
         }
 
@@ -60,7 +61,7 @@ public class GameManager : MonoBehaviour
 
     void GenerateLevel()
     {
-        // Lógica matemática
+        // Lógica matemática (Multiplicación)
         int minRange = 2 + (currentLevel / 5);
         int maxRange = 10 + (currentLevel / 2);
 
@@ -96,7 +97,8 @@ public class GameManager : MonoBehaviour
         {
             if (i < values.Count)
             {
-                petals[i].Setup(values[i]);
+                // Asegúrate que tu script PetalController tenga el método Setup
+                if (petals[i] != null) petals[i].Setup(values[i]);
             }
         }
     }
@@ -120,7 +122,7 @@ public class GameManager : MonoBehaviour
         {
             Debug.Log("¡Correcto!");
 
-            // NUEVO: Sumar puntos
+            // Sumar puntos
             currentScore += pointsPerLevel;
             UpdateScoreUI();
 
@@ -129,7 +131,10 @@ public class GameManager : MonoBehaviour
         else
         {
             Debug.Log("Incorrecto. Game Over.");
-            // Si te equivocas en la multiplicación, pierdes el avance
+
+            // --- AL PERDER: Guardar PUNTAJE final ---
+            SaveMyScore();
+
             StartCoroutine(GameOverSequence());
         }
     }
@@ -139,21 +144,34 @@ public class GameManager : MonoBehaviour
         currentLevel++;
         levelText.text = "Nivel: " + currentLevel;
 
-        // Guardar progreso
-        if (dbManager != null)
+        // --- GUARDADO DE PROGRESO (NIVEL) ---
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
         {
-            dbManager.SaveProgress(currentLevel);
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            DatabaseManager.Instance.SaveProgress(myUserId, currentLevel);
         }
 
         GenerateLevel();
     }
 
-    // NUEVO: Secuencia de Game Over
+    // --- NUEVO: Guardar PUNTAJE en la DB ---
+    void SaveMyScore()
+    {
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+        {
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            // Guardamos con el ID "JuegoFlores"
+            DatabaseManager.Instance.SaveScore(myUserId, gameID, currentScore);
+            Debug.Log($"Puntaje de Flores guardado: {currentScore}");
+        }
+    }
+
+    // Secuencia de Game Over
     IEnumerator GameOverSequence()
     {
         if (gameOverText) gameOverText.SetActive(true);
 
-        // Bloquear botón para que no sigan pulsando
+        // Bloquear botón
         confirmButton.interactable = false;
 
         yield return new WaitForSeconds(2f);
@@ -165,15 +183,14 @@ public class GameManager : MonoBehaviour
         currentScore = 0;
         UpdateScoreUI();
 
-        // Opcional: ¿Quieres que el nivel vuelva a 1 o que solo se reinicie el actual?
-        // Aquí lo dejo para que vuelva a 1 (mayor dificultad).
+        // Reinicia a nivel 1
         currentLevel = 1;
         levelText.text = "Nivel: " + currentLevel;
 
         GenerateLevel();
     }
 
-    // NUEVO: Actualizar texto de puntos
+    // Actualizar texto de puntos
     void UpdateScoreUI()
     {
         if (scoreText != null)
@@ -182,7 +199,6 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    // NUEVO: Para leer los puntos desde fuera
     public int GetCurrentScore()
     {
         return currentScore;

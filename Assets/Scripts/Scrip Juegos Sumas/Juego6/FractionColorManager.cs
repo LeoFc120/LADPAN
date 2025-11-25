@@ -11,13 +11,16 @@ public class FractionColorManager : MonoBehaviour
     public Text winLoseText;
     public GameObject gameOverText;
 
+    [Header("UI Puntuación")]
+    public Text scoreText;    // Arrastra aquí el texto de Puntos
+
     [Header("Juego")]
     public Transform circleContainer; // Objeto vacío donde nacen las rebanadas
     public GameObject slicePrefab;    // Tu prefab de la rebanada
     public Button checkButton;        // Botón comprobar
 
-    [Header("Base de Datos")]
-    public LevelSaver databaseScript;
+    // --- CAMBIO: Referencia vieja borrada ---
+    // public LevelSaver databaseScript; // BORRADO
 
     // Variables internas
     private int currentLevel = 1;
@@ -25,12 +28,22 @@ public class FractionColorManager : MonoBehaviour
     private int denominator; // Total de rebanadas
     private List<SliceController> currentSlices = new List<SliceController>();
 
+    // Variables de Puntuación
+    private int currentScore = 0;
+    private int pointsPerLevel = 50;
+
+    // ID ÚNICO PARA ESTE JUEGO
+    private string gameID = "JuegoFraccionesColor";
+
     void Start()
     {
         if (winLoseText) winLoseText.gameObject.SetActive(false);
         if (gameOverText) gameOverText.SetActive(false);
 
         checkButton.onClick.AddListener(CheckAnswer);
+
+        // Iniciar puntos
+        UpdateScoreUI();
 
         StartLevel();
     }
@@ -45,17 +58,14 @@ public class FractionColorManager : MonoBehaviour
         if (levelText) levelText.text = "Level: " + currentLevel;
 
         // 2. DIFICULTAD
-        // Nivel 1: Partir en 2, 3 o 4
-        // Nivel 2: Partir en 4, 5 o 6
-        // Nivel 3: Partir en 6, 7 u 8
         int minParts = 2;
         int maxParts = 3 + currentLevel;
         if (maxParts > 8) maxParts = 8; // Máximo visual recomendado
 
-        denominator = Random.Range(minParts, maxParts + 1); // Total de rebanadas
-        numerator = Random.Range(1, denominator); // Cuántas pintar (siempre menos que el total)
+        denominator = Random.Range(minParts, maxParts + 1);
+        numerator = Random.Range(1, denominator);
 
-        // 3. Mostrar Texto (Formato Vertical)
+        // 3. Mostrar Texto
         fractionText.text = numerator + "\n—\n" + denominator;
 
         // 4. Crear el círculo
@@ -64,34 +74,22 @@ public class FractionColorManager : MonoBehaviour
 
     void GenerateCircle(int parts)
     {
-        // Cálculo Matemático:
-        // Si el círculo es 1.0, cada rebanada llena (1.0 / partes)
         float fillAmount = 1.0f / parts;
-
-        // Cada rebanada ocupa (360 grados / partes)
         float degreesPerSlice = 360f / parts;
 
         for (int i = 0; i < parts; i++)
         {
-            // Crear rebanada dentro del contenedor
             GameObject newSlice = Instantiate(slicePrefab, circleContainer);
-
-            // Obtener el script
             SliceController controller = newSlice.GetComponent<SliceController>();
 
-            // Calcular rotación (Unity gira en sentido horario con Z negativo)
             float rotationZ = -(degreesPerSlice * i);
-
-            // Configurar la rebanada
             controller.Setup(fillAmount, rotationZ);
 
-            // --- TRUCO PARA EL CLIC ---
-            // Le ponemos un botón invisible a la rebanada en tiempo real
+            // Truco del botón
             Button btn = newSlice.AddComponent<Button>();
-            btn.transition = Selectable.Transition.None; // Sin parpadeo
-            btn.onClick.AddListener(controller.OnClick); // Conectar al script de la rebanada
+            btn.transition = Selectable.Transition.None;
+            btn.onClick.AddListener(controller.OnClick);
 
-            // Guardar en lista para revisarla luego
             currentSlices.Add(controller);
         }
     }
@@ -100,7 +98,6 @@ public class FractionColorManager : MonoBehaviour
     {
         int paintedCount = 0;
 
-        // Contar cuántas están azules
         foreach (SliceController slice in currentSlices)
         {
             if (slice.isSelected) paintedCount++;
@@ -133,14 +130,36 @@ public class FractionColorManager : MonoBehaviour
 
         if (success)
         {
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+            // Sumar puntos
+            currentScore += pointsPerLevel;
+            UpdateScoreUI();
+
+            // Guardar progreso de NIVEL
+            if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+            {
+                DatabaseManager.Instance.SaveProgress(GameSession.Current.CurrentUser.Id, currentLevel);
+            }
+
             currentLevel++;
             StartLevel();
         }
         else
         {
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+            // AL PERDER: Guardar PUNTAJE
+            SaveMyScore();
             StartCoroutine(GameOverSequence());
+        }
+    }
+
+    // --- NUEVO: Guardar en la DB ---
+    void SaveMyScore()
+    {
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+        {
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            // Guardamos con el ID "JuegoFraccionesColor"
+            DatabaseManager.Instance.SaveScore(myUserId, gameID, currentScore);
+            Debug.Log($"Puntaje de Fracciones (Color) guardado: {currentScore}");
         }
     }
 
@@ -150,7 +169,17 @@ public class FractionColorManager : MonoBehaviour
         if (gameOverText) gameOverText.SetActive(true);
         yield return new WaitForSeconds(2f);
         if (gameOverText) gameOverText.SetActive(false);
+
+        // Reiniciar Puntos
+        currentScore = 0;
+        UpdateScoreUI();
+
         currentLevel = 1;
         StartLevel();
+    }
+
+    void UpdateScoreUI()
+    {
+        if (scoreText != null) scoreText.text = "Puntos: " + currentScore.ToString();
     }
 }
