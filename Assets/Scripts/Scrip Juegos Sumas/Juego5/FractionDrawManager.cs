@@ -12,7 +12,7 @@ public class FractionDrawManager : MonoBehaviour
     public Text winLoseText;
     public GameObject gameOverText;
 
-    [Header("UI Puntuación")] // NUEVO: Sección para los puntos
+    [Header("UI Puntuación")]
     public Text scoreText;    // Arrastra aquí tu texto de "Puntos: 0"
 
     [Header("Zona de Dibujo")]
@@ -24,8 +24,8 @@ public class FractionDrawManager : MonoBehaviour
     public Button checkButton;
     public Button cleanButton;
 
-    [Header("Base de Datos")]
-    public LevelSaver databaseScript;
+    // --- CAMBIO: Referencia vieja borrada ---
+    // public LevelSaver databaseScript; // BORRADO
 
     // Variables de Juego
     private int currentLevel = 1;
@@ -34,8 +34,11 @@ public class FractionDrawManager : MonoBehaviour
     private List<GameObject> drawnLines = new List<GameObject>();
 
     // Variables de Puntuación
-    private int currentScore = 0;       // NUEVO: Variable interna de puntos
-    private int pointsPerLevel = 100;   // NUEVO: Cuántos puntos das por acierto
+    private int currentScore = 0;
+    private int pointsPerLevel = 100;
+
+    // ID ÚNICO PARA ESTE JUEGO
+    private string gameID = "JuegoFracciones";
 
     // Variables para el Dibujo
     private GameObject currentLine;
@@ -50,7 +53,7 @@ public class FractionDrawManager : MonoBehaviour
         if (checkButton) checkButton.onClick.AddListener(CheckAnswer);
         if (cleanButton) cleanButton.onClick.AddListener(ClearLines);
 
-        // NUEVO: Asegurarnos de que el score empiece en 0 visualmente
+        // Iniciar Score en 0
         UpdateScoreUI();
 
         StartLevel();
@@ -114,13 +117,16 @@ public class FractionDrawManager : MonoBehaviour
     void FinishDrawing()
     {
         isDrawing = false;
-        RectTransform rt = currentLine.GetComponent<RectTransform>();
-
-        if (rt.sizeDelta.x < 10) Destroy(currentLine);
-        else
+        if (currentLine != null)
         {
-            if (currentLine.GetComponent<Image>()) currentLine.GetComponent<Image>().raycastTarget = true;
-            drawnLines.Add(currentLine);
+            RectTransform rt = currentLine.GetComponent<RectTransform>();
+
+            if (rt.sizeDelta.x < 10) Destroy(currentLine);
+            else
+            {
+                if (currentLine.GetComponent<Image>()) currentLine.GetComponent<Image>().raycastTarget = true;
+                drawnLines.Add(currentLine);
+            }
         }
         currentLine = null;
     }
@@ -189,22 +195,36 @@ public class FractionDrawManager : MonoBehaviour
 
         if (success)
         {
-            // NUEVO: Sumar puntos
+            // Sumar puntos
             currentScore += pointsPerLevel;
             UpdateScoreUI();
 
-            // Aquí podrías actualizar SaveProgress para que guarde nivel Y puntos si quieres
-            // Ejemplo: databaseScript.SaveProgress(currentLevel, currentScore);
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+            // Guardar progreso de NIVEL
+            if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+            {
+                DatabaseManager.Instance.SaveProgress(GameSession.Current.CurrentUser.Id, currentLevel);
+            }
 
             currentLevel++;
             StartLevel();
         }
         else
         {
-            // Nota: Si pierdes, ¿guardas el puntaje acumulado antes de perder?
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+            // AL PERDER: Guardamos el PUNTAJE final
+            SaveMyScore();
             StartCoroutine(GameOverSequence());
+        }
+    }
+
+    // --- NUEVO: Guardar en la DB ---
+    void SaveMyScore()
+    {
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+        {
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            // Guardamos con el ID "JuegoFracciones"
+            DatabaseManager.Instance.SaveScore(myUserId, gameID, currentScore);
+            Debug.Log($"Puntaje de Fracciones guardado: {currentScore}");
         }
     }
 
@@ -219,7 +239,7 @@ public class FractionDrawManager : MonoBehaviour
         yield return new WaitForSeconds(2f);
         if (gameOverText) gameOverText.SetActive(false);
 
-        // NUEVO: Reiniciar Puntuación al perder
+        // Reiniciar Puntuación al perder
         currentScore = 0;
         UpdateScoreUI();
 
@@ -227,7 +247,6 @@ public class FractionDrawManager : MonoBehaviour
         StartLevel();
     }
 
-    // NUEVO: Función auxiliar para actualizar el texto
     void UpdateScoreUI()
     {
         if (scoreText != null)
@@ -236,7 +255,6 @@ public class FractionDrawManager : MonoBehaviour
         }
     }
 
-    // NUEVO: Función pública para que la base de datos pueda leer los puntos
     public int GetCurrentScore()
     {
         return currentScore;

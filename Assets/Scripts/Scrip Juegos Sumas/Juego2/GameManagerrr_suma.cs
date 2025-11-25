@@ -7,33 +7,38 @@ public class GameManagerrr_suma : MonoBehaviour
 {
     [Header("Referencias UI Ecuaciones")]
     public Text[] row1Texts;
-    public DropSlot_SUMA row1Slot; // Referencia corregida
+    public DropSlot_SUMA row1Slot; // Correcto: Usa el script de Suma
 
     [Header("UI Puntuación")]
-    public Text scoreText;
+    public Text scoreText; // Arrastra aquí el texto de Puntos
 
     public Text[] row2Texts;
-    public DropSlot_SUMA row2Slot; // Referencia corregida
+    public DropSlot_SUMA row2Slot; // Correcto: Usa el script de Suma
 
     public Text[] row3Texts;
-    public DropSlot_SUMA row3Slot; // Referencia corregida
+    public DropSlot_SUMA row3Slot; // Correcto: Usa el script de Suma
 
     [Header("Referencias UI Respuestas")]
-    public DraggableItem_SUMA[] answerOptions; // Referencia corregida
+    public DraggableItem_SUMA[] answerOptions; // Correcto: Usa el script de Suma
     public Text[] answerTexts;
     public Transform answersParent;
 
     [Header("UI Juego")]
     public GameObject gameOverText;
 
-    [Header("Base de Datos")]
-    public LevelSaver databaseScript;
+    // --- CAMBIO: Eliminamos la referencia vieja "LevelSaver" ---
+    // public LevelSaver databaseScript; // BORRADO
 
     // Variables internas
     private int currentLevel = 1;
     private int correctCount = 0;
+
+    // Variables de Puntuación
     private int currentScore = 0;
     private int pointsPerLevel = 30;
+
+    // ID ÚNICO PARA ESTE JUEGO
+    private string gameID = "JuegoSumas";
 
     void Start()
     {
@@ -46,10 +51,10 @@ public class GameManagerrr_suma : MonoBehaviour
     {
         correctCount = 0;
 
-        // Validación para evitar errores si olvidas arrastrar algo
+        // Validación de seguridad
         if (row1Slot == null || row2Slot == null || row3Slot == null)
         {
-            Debug.LogError("¡ALERTA! Faltan asignar los Slots en el Inspector del Manager.");
+            Debug.LogError("¡ALERTA! Faltan asignar los Slots_SUMA en el Inspector.");
             return;
         }
 
@@ -70,7 +75,7 @@ public class GameManagerrr_suma : MonoBehaviour
         SetupEquation(row2Texts, row2Slot, correctAnswers);
         SetupEquation(row3Texts, row3Slot, correctAnswers);
 
-        // Crear Respuestas (3 correctas + 2 falsas)
+        // Crear Respuestas (3 correctas + falsas)
         List<int> finalOptions = new List<int>(correctAnswers);
 
         while (finalOptions.Count < answerOptions.Length)
@@ -91,7 +96,7 @@ public class GameManagerrr_suma : MonoBehaviour
                 if (answerTexts[i] != null) answerTexts[i].text = finalOptions[i].ToString();
 
                 answerOptions[i].gameObject.SetActive(true);
-                // Asegurar que se puedan tocar
+
                 if (answerOptions[i].GetComponent<CanvasGroup>())
                     answerOptions[i].GetComponent<CanvasGroup>().blocksRaycasts = true;
 
@@ -107,7 +112,7 @@ public class GameManagerrr_suma : MonoBehaviour
         int numA = Random.Range(1, rangeMax);
         int numB = Random.Range(1, rangeMax);
 
-        int result = numA + numB; // SUMA
+        int result = numA + numB; // LÓGICA DE SUMA
 
         if (texts.Length > 1)
         {
@@ -119,19 +124,27 @@ public class GameManagerrr_suma : MonoBehaviour
         answers.Add(result);
     }
 
+    // Esta función la llaman tus slots _SUMA
     public void CheckAnswer(bool isCorrect)
     {
         if (isCorrect)
         {
             correctCount++;
+
             // Ganas si aciertas las 3
             if (correctCount >= 3)
             {
                 Debug.Log("Nivel completado");
+
+                // Sumar puntos
                 currentScore += pointsPerLevel;
                 UpdateScoreUI();
 
-                if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+                // (Opcional) Guardar progreso de NIVEL
+                if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+                {
+                    DatabaseManager.Instance.SaveProgress(GameSession.Current.CurrentUser.Id, currentLevel);
+                }
 
                 currentLevel++;
                 Invoke("GenerateLevel", 1f);
@@ -139,9 +152,21 @@ public class GameManagerrr_suma : MonoBehaviour
         }
         else
         {
-            // Pierdes si fallas una
-            if (databaseScript != null) databaseScript.SaveProgress(currentLevel);
+            // AL PERDER: Guardamos PUNTAJE
+            SaveMyScore();
             StartCoroutine(GameOverSequence());
+        }
+    }
+
+    // --- NUEVO: Guardar en DB ---
+    void SaveMyScore()
+    {
+        if (DatabaseManager.Instance != null && GameSession.Current != null && GameSession.Current.CurrentUser != null)
+        {
+            int myUserId = GameSession.Current.CurrentUser.Id;
+            // Guardamos con el ID "JuegoSumas"
+            DatabaseManager.Instance.SaveScore(myUserId, gameID, currentScore);
+            Debug.Log($"Puntaje de Sumas guardado: {currentScore}");
         }
     }
 
@@ -167,9 +192,10 @@ public class GameManagerrr_suma : MonoBehaviour
 
         if (gameOverText) gameOverText.SetActive(false);
 
-        // Reiniciar puntos
+        // Reiniciar puntos y nivel
         currentScore = 0;
         UpdateScoreUI();
+
         currentLevel = 1;
         GenerateLevel();
     }
