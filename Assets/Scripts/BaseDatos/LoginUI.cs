@@ -1,23 +1,25 @@
 using UnityEngine;
-using UnityEngine.UI; // Necesario para controlar la UI
-using UnityEngine.SceneManagement; // Necesario para cambiar de escena
+using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 public class LoginUI : MonoBehaviour
 {
     [Header("Arrastra los objetos aquí")]
-    public InputField nameInput;  // La caja de texto
-    public Button loginButton;    // El botón
-    public Text errorText;        // El texto para mensajes
+    public InputField nameInput;
+    public Button loginButton;
+    public Text errorText;
 
     [Header("Configuración")]
-    public string nextSceneName = "GameScene"; // EL NOMBRE EXACTO DE TU ESCENA DE JUEGO
+    // Asegúrate de que este nombre coincida con el nombre de tu escena de menú de juegos
+    public string nextSceneName = "MenuMinijuegos";
 
     void Start()
     {
-        // Limpiamos el texto de error al iniciar
         if (errorText) errorText.text = "";
 
-        // Le decimos al botón qué hacer cuando le hagan click
+        // Limpiamos la sesión anterior por si acaso
+        GameSession.CurrentUser = null;
+
         loginButton.onClick.AddListener(HacerLogin);
     }
 
@@ -25,37 +27,73 @@ public class LoginUI : MonoBehaviour
     {
         string nombreUsuario = nameInput.text.Trim();
 
-        // 1. Validar que escribió algo
+        // 1. Validaciones básicas
         if (string.IsNullOrEmpty(nombreUsuario))
         {
-            errorText.text = "¡Escribe un nombre para jugar!";
-            errorText.color = Color.red;
+            MostrarError("¡Escribe un nombre para jugar!");
             return;
         }
 
         if (nombreUsuario.Length < 3)
         {
-            errorText.text = "El nombre es muy corto (mínimo 3 letras).";
-            errorText.color = Color.red;
+            MostrarError("El nombre es muy corto (mínimo 3 letras).");
+            return;
+        }
+
+        // Evitar que un alumno intente entrar como Profesor sin contraseña aquí
+        if (nombreUsuario.ToLower() == "profesor")
+        {
+            MostrarError("El profesor debe ingresar en su panel especial.");
             return;
         }
 
         // 2. Conectar con la Base de Datos
-        // Usamos GameSession para registrar al usuario
-        if (GameSession.Current != null)
+        if (DatabaseManager.Instance != null)
         {
-            GameSession.Current.Login(nombreUsuario);
+            Usuario usuarioFinal = null;
 
-            errorText.text = "¡Bienvenido " + nombreUsuario + "!";
-            errorText.color = Color.green;
+            // INTENTO A: Registrar como nuevo alumno
+            bool sePudoRegistrar = DatabaseManager.Instance.RegistrarAlumno(nombreUsuario, out usuarioFinal);
 
-            // 3. Cambiar de escena después de 1 segundo
-            Invoke("CargarJuego", 1.0f);
+            // INTENTO B: Si no se pudo (ya existe), intentamos Loguear
+            if (!sePudoRegistrar)
+            {
+                // Buscamos al usuario existente
+                usuarioFinal = DatabaseManager.Instance.Login(nombreUsuario);
+            }
+
+            // 3. Resultado Final
+            if (usuarioFinal != null)
+            {
+                // ¡Éxito! Guardamos al usuario en la sesión estática
+                GameSession.CurrentUser = usuarioFinal;
+
+                errorText.text = "¡Bienvenido " + usuarioFinal.Nombre + "!";
+                errorText.color = Color.green;
+
+                // Bloqueamos el botón para que no le den click doble
+                loginButton.interactable = false;
+
+                Invoke("CargarJuego", 1.0f);
+            }
+            else
+            {
+                MostrarError("Hubo un error al conectar con los datos.");
+            }
         }
         else
         {
-            Debug.LogError("¡Falta el objeto SystemManagers en la escena!");
-            errorText.text = "Error interno del sistema.";
+            Debug.LogError("¡Falta el DatabaseManager en la escena!");
+            MostrarError("Error: No se encontró la Base de Datos.");
+        }
+    }
+
+    void MostrarError(string mensaje)
+    {
+        if (errorText)
+        {
+            errorText.text = mensaje;
+            errorText.color = Color.red;
         }
     }
 

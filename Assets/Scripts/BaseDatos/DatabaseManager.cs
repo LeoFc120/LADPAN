@@ -1,24 +1,22 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using SQLite;
 using System.IO;
 using System.Linq;
+using System.Collections.Generic;
 
 public class DatabaseManager : MonoBehaviour
 {
     public static DatabaseManager Instance;
-    private string dbPath;
-    private SQLiteConnection connection;
+    private SQLiteConnection _connection;
+    private string _dbPath;
 
     void Awake()
     {
-        // Singleton para acceder fácil desde cualquier minijuego
         if (Instance == null)
         {
             Instance = this;
             DontDestroyOnLoad(gameObject);
-            InitializeDatabase();
+            IniciarBaseDeDatos();
         }
         else
         {
@@ -26,111 +24,133 @@ public class DatabaseManager : MonoBehaviour
         }
     }
 
-    private void InitializeDatabase()
+    private void IniciarBaseDeDatos()
     {
-        // Define la ruta segura para guardar datos en Android/iOS/PC
-        dbPath = Path.Combine(Application.persistentDataPath, "GameDatabase.db");
+        string fileName = "EscuelaGames.db";
+        _dbPath = Path.Combine(Application.persistentDataPath, fileName);
 
-        // Abre la conexión
-        connection = new SQLiteConnection(dbPath);
+        _connection = new SQLiteConnection(_dbPath);
 
-        // Crea las tablas si no existen
-        connection.CreateTable<UserProfile>();
-        connection.CreateTable<GameScore>();
+        // Crear tablas si no existen
+        _connection.CreateTable<Usuario>();
+        _connection.CreateTable<ProgresoJuego>();
 
-        Debug.Log("Base de datos inicializada en: " + dbPath);
+        Debug.Log("Base de datos iniciada en: " + _dbPath);
+        CrearProfesorDefault();
     }
 
-    // --- FUNCIONES PARA USUARIOS ---
+    // --- GESTIÓN DE USUARIOS ---
 
-    public UserProfile RegisterOrLoginUser(string username)
+    private void CrearProfesorDefault()
     {
-        // Buscar si ya existe
-        var existingUser = connection.Table<UserProfile>().Where(u => u.Username == username).FirstOrDefault();
-
-        if (existingUser != null)
+        // Verificar si ya existe el profe
+        var profe = _connection.Table<Usuario>().FirstOrDefault(u => u.EsProfesor);
+        if (profe == null)
         {
-            Debug.Log("Usuario logueado: " + username);
-            return existingUser;
+            var nuevoProfe = new Usuario
+            {
+                Nombre = "Profesor",
+                EsProfesor = true,
+                Password = "admin", // Contraseña simple
+                GlobalId = System.Guid.NewGuid().ToString(),
+                FechaRegistro = System.DateTime.Now
+            };
+            _connection.Insert(nuevoProfe);
+            Debug.Log("Profesor creado por defecto (Pass: admin)");
         }
-
-        // Si no existe, crear uno nuevo
-        var newUser = new UserProfile
-        {
-            Username = username,
-            CreatedAt = System.DateTime.Now
-        };
-        connection.Insert(newUser);
-        Debug.Log("Usuario registrado: " + username);
-
-        return newUser;
     }
 
-    // --- FUNCIONES PARA PUNTAJES ---
-
-    public void SaveScore(int userId, string gameName, int score)
+    public bool RegistrarAlumno(string nombre, out Usuario usuarioCreado)
     {
-        var newScore = new GameScore
+        usuarioCreado = null;
+
+        // Validar duplicados (Case Insensitive)
+        var existente = _connection.Table<Usuario>()
+                            .FirstOrDefault(u => u.Nombre.ToLower() == nombre.ToLower() && !u.EsProfesor);
+
+        if (existente != null) return false; // Ya existe
+
+        usuarioCreado = new Usuario
         {
-            UserId = userId,
-            MiniGameName = gameName,
-            Score = score,
-            DatePlayed = System.DateTime.Now
+            Nombre = nombre,
+            EsProfesor = false,
+            GlobalId = System.Guid.NewGuid().ToString(), // ID único para el futuro online
+            FechaRegistro = System.DateTime.Now
         };
 
-        connection.Insert(newScore);
-        Debug.Log($"Puntaje guardado para {gameName}: {score}");
+        _connection.Insert(usuarioCreado);
+        return true;
     }
 
-    // --- FUNCIONES PARA PROGRESO DE NIVEL (NUEVAS) ---
-    // Estas son las funciones que tu GameManager estaba buscando y no encontraba
-
-    public void SaveProgress(int userId, int levelIndex)
+    public Usuario Login(string nombre, string password = "")
     {
-        // Guardamos el nivel como si fuera un puntaje especial llamado "LevelProgress"
-        // Esto evita tener que modificar la tabla de Usuarios y borrar la base de datos vieja
-        SaveScore(userId, "LevelProgress", levelIndex);
-        Debug.Log($"Progreso guardado: Nivel {levelIndex}");
-    }
-
-    public int LoadLevel(int userId)
-    {
-        // Buscamos el registro más alto de "LevelProgress"
-        var lastLevelRecord = connection.Table<GameScore>()
-                                        .Where(s => s.UserId == userId && s.MiniGameName == "LevelProgress")
-                                        .OrderByDescending(s => s.Score) // Ordenamos para obtener el nivel más alto
-                                        .FirstOrDefault();
-
-        if (lastLevelRecord != null)
+        if (nombre.ToLower() == "profesor")
         {
-            return lastLevelRecord.Score; // Retorna el nivel guardado
+            return _connection.Table<Usuario>().FirstOrDefault(u => u.EsProfesor && u.Password == password);
         }
-
-        return 1; // Si no ha jugado nunca, empieza en nivel 1
+        else
+        {
+            return _connection.Table<Usuario>().FirstOrDefault(u => u.Nombre.ToLower() == nombre.ToLower() && !u.EsProfesor);
+        }
     }
 
-    // --- FUNCIONES PARA ESTADÍSTICAS ---
+    // --- GESTIÓN DE JUEGO (Lo que usa tu GameManager) ---
 
-    // Obtener los mejores puntajes de un minijuego específico
-    public List<GameScoreView> GetHighScores(string gameName)
+    // Guardar o Actualizar Progreso
+    public void GuardarProgreso(int usuarioId, string gameID, int puntajeSumar, int nivelAlcanzado)
     {
-        // Hacemos una consulta SQL (JOIN) para unir el nombre del usuario con su puntaje
-        string query = @"
-            SELECT u.Username, s.Score, s.DatePlayed 
-            FROM GameScore s 
-            INNER JOIN UserProfile u ON s.UserId = u.Id 
-            WHERE s.MiniGameName = ? 
-            ORDER BY s.Score DESC 
-            LIMIT 10";
+        // Buscamos si ya jugó este juego antes
+        var progreso = _connection.Table<ProgresoJuego>()
+                            .FirstOrDefault(p => p.UsuarioId == usuarioId && p.GameID == gameID);
 
-        return connection.Query<GameScoreView>(query, gameName);
+        if (progreso == null)
+        {
+            // Primer registro
+            progreso = new ProgresoJuego
+            {
+                UsuarioId = usuarioId,
+                GameID = gameID,
+                NivelMaximo = nivelAlcanzado,
+                PuntajeAcumulado = puntajeSumar,
+                Sincronizado = false,
+                UltimaJugada = System.DateTime.Now
+            };
+            _connection.Insert(progreso);
+        }
+        else
+        {
+            // Actualizar existente
+            progreso.PuntajeAcumulado += puntajeSumar; // Acumulamos puntos
+            if (nivelAlcanzado > progreso.NivelMaximo)
+            {
+                progreso.NivelMaximo = nivelAlcanzado;
+            }
+            progreso.Sincronizado = false; // Marcamos para subir a la nube luego
+            progreso.UltimaJugada = System.DateTime.Now;
+
+            _connection.Update(progreso);
+        }
     }
-}
 
-// Clase auxiliar solo para mostrar datos en la tabla (no se guarda en DB)
-public class GameScoreView
-{
-    public string Username { get; set; }
-    public int Score { get; set; }
-    public System.DateTime DatePlayed { get; set; }
+    // Cargar nivel para configurar dificultad
+    public int LoadLevel(int usuarioId, string gameID)
+    {
+        var progreso = _connection.Table<ProgresoJuego>()
+                            .FirstOrDefault(p => p.UsuarioId == usuarioId && p.GameID == gameID);
+
+        return progreso != null ? progreso.NivelMaximo : 1; // Si no existe, devuelve nivel 1
+    }
+
+    // --- PARA EL PROFESOR ---
+    // Obtiene lista de todos los alumnos
+    public List<Usuario> ObtenerAlumnos()
+    {
+        return _connection.Table<Usuario>().Where(u => !u.EsProfesor).ToList();
+    }
+
+    // Obtiene estadísticas de un alumno específico
+    public List<ProgresoJuego> ObtenerStatsAlumno(int alumnoId)
+    {
+        return _connection.Table<ProgresoJuego>().Where(p => p.UsuarioId == alumnoId).ToList();
+    }
 }

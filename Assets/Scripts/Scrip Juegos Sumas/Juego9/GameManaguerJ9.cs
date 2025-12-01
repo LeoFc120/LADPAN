@@ -1,7 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
-
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -15,20 +11,36 @@ public class GameManagueJ9 : MonoBehaviour
     public TextMeshProUGUI textoPuntaje;
     public Image barraTiempo;
     public GameObject[] iconosVidas; // Arrastra aquí las 3 imagenes de vacas
-    public GameObject panelGameOver; // Un panel que diga "Perdiste" (opcional)
+    public GameObject panelGameOver;
 
     [Header("Configuración Juego")]
     public float tiempoMaximo = 10f;
 
-    private int puntajeActual = 0;
+    // Variables internas
+    private int puntajeActual = 0; // Puntos ganados en ESTA partida
     private int vidas = 3;
     private float tiempoRestante;
     private int resultadoCorrecto;
     private string respuestaActual = "";
     private bool juegoActivo = true;
 
+    // --- NUEVO: Variables de Nivel y DB ---
+    private int currentLevel = 1;
+    private string gameID = "JuegoMultiplicacion"; // ID único para la BD
+
     void Start()
     {
+        // --- 1. CARGAR NIVEL DE DIFICULTAD ---
+        if (DatabaseManager.Instance != null && GameSession.CurrentUser != null)
+        {
+            currentLevel = DatabaseManager.Instance.LoadLevel(GameSession.CurrentUser.Id, gameID);
+            if (currentLevel < 1) currentLevel = 1;
+        }
+        else
+        {
+            currentLevel = 1; // Modo prueba
+        }
+
         StartCoroutine(LogicaTiempo());
         GenerarNuevaOperacion();
         ActualizarUI();
@@ -36,7 +48,6 @@ public class GameManagueJ9 : MonoBehaviour
 
     void Update()
     {
-        // Actualizar visualmente la barra de tiempo
         if (juegoActivo)
         {
             barraTiempo.fillAmount = tiempoRestante / tiempoMaximo;
@@ -47,9 +58,13 @@ public class GameManagueJ9 : MonoBehaviour
 
     void GenerarNuevaOperacion()
     {
-        // Genera números aleatorios (tablas del 1 al 10)
-        int a = Random.Range(1, 11);
-        int b = Random.Range(1, 11);
+        // --- 2. DIFICULTAD DINÁMICA ---
+        // A medida que sube el nivel, los números son más grandes.
+        // Nivel 1: hasta 10. Nivel 5: hasta 12. Nivel 10: hasta 15.
+        int maxRango = 10 + (currentLevel / 2);
+
+        int a = Random.Range(1, maxRango + 1);
+        int b = Random.Range(1, 11); // Mantenemos uno de los factores controlado al inicio
 
         resultadoCorrecto = a * b;
         textoPregunta.text = a.ToString() + " X " + b.ToString();
@@ -70,7 +85,7 @@ public class GameManagueJ9 : MonoBehaviour
             if (tiempoRestante <= 0)
             {
                 PerderVida();
-                GenerarNuevaOperacion(); // Pasamos a la siguiente aunque no responda
+                GenerarNuevaOperacion();
             }
         }
     }
@@ -79,7 +94,6 @@ public class GameManagueJ9 : MonoBehaviour
     {
         vidas--;
 
-        // Ocultar una vaca
         if (vidas >= 0 && vidas < iconosVidas.Length)
         {
             iconosVidas[vidas].SetActive(false);
@@ -96,29 +110,39 @@ public class GameManagueJ9 : MonoBehaviour
         juegoActivo = false;
         Debug.Log("Juego Terminado");
 
-        // Guardar Puntaje
-        if (DataManager.Instance != null)
-        {
-            DataManager.Instance.GuardarMaxPuntuacion(puntajeActual);
-        }
+        // --- 3. GUARDAR PROGRESO AL PERDER ---
+        // Guardamos los puntos que hizo en esta sesión y el nivel actual
+        SaveProgress(puntajeActual);
 
         if (panelGameOver != null) panelGameOver.SetActive(true);
     }
 
+    // Función auxiliar para guardar
+    void SaveProgress(int puntosGanados)
+    {
+        if (DatabaseManager.Instance != null && GameSession.CurrentUser != null)
+        {
+            int myUserId = GameSession.CurrentUser.Id;
+
+            // Enviamos a la BD: ID Usuario, ID Juego, Puntos obtenidos, Nivel Actual
+            DatabaseManager.Instance.GuardarProgreso(myUserId, gameID, puntosGanados, currentLevel);
+
+            Debug.Log($"Progreso Multiplicación guardado. Puntos sesión: {puntosGanados}");
+        }
+    }
+
     // --- Métodos para los Botones (UI) ---
 
-    // Asigna este método a los botones 0-9. En el inspector, escribe el número en el parámetro.
     public void PresionarNumero(string numero)
     {
         if (!juegoActivo) return;
-        if (respuestaActual.Length < 4) // Límite de caracteres
+        if (respuestaActual.Length < 4)
         {
             respuestaActual += numero;
             textoRespuestaUsuario.text = respuestaActual;
         }
     }
 
-    // Asigna al botón "Borrar"
     public void Borrar()
     {
         if (!juegoActivo) return;
@@ -126,7 +150,6 @@ public class GameManagueJ9 : MonoBehaviour
         textoRespuestaUsuario.text = respuestaActual;
     }
 
-    // Asigna al botón "Confirmar"
     public void Confirmar()
     {
         if (!juegoActivo || string.IsNullOrEmpty(respuestaActual)) return;
@@ -136,7 +159,14 @@ public class GameManagueJ9 : MonoBehaviour
         if (respuestaInt == resultadoCorrecto)
         {
             // Respuesta Correcta
-            puntajeActual += 10; // O lo que quieras sumar
+            puntajeActual += 10; // 10 puntos por acierto
+
+            // Opcional: Si acierta muchas, subimos el nivel en la misma partida
+            if (puntajeActual % 100 == 0) // Cada 100 puntos sube dificultad
+            {
+                currentLevel++;
+            }
+
             GenerarNuevaOperacion();
         }
         else
@@ -145,7 +175,6 @@ public class GameManagueJ9 : MonoBehaviour
             PerderVida();
             respuestaActual = "";
             textoRespuestaUsuario.text = "";
-            // Opcional: Generar nueva operación o dejar que intente de nuevo
             GenerarNuevaOperacion();
         }
         ActualizarUI();
